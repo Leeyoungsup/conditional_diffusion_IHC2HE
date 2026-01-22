@@ -286,7 +286,7 @@ class Unet(nn.Module):
 
 
 class UnetWithMask(nn.Module):
-    def __init__(self, in_ch=3, mask_ch=1, mod_ch=64, out_ch=3, ch_mul=[1, 2, 4, 8], num_res_blocks=2, cdim=10, use_conv=True, droprate=0, dtype=torch.float32):
+    def __init__(self, in_ch=3, mask_ch=5, mod_ch=64, out_ch=3, ch_mul=[1, 2, 4, 8], num_res_blocks=2, cdim=10, use_conv=True, droprate=0, dtype=torch.float32):
         super().__init__()
         self.in_ch = in_ch + mask_ch  # Adjusted to accept mask input
         self.mod_ch = mod_ch
