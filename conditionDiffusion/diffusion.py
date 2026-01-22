@@ -131,10 +131,30 @@ class GaussianDiffusion(nn.Module):
             model_kwargs = {}
         B, C = x_t.shape[:2]
         assert t.shape == (B,)
-        cemb_shape = model_kwargs['cemb'].shape
-        pred_eps_cond = self.model(x_t, t, **model_kwargs)
-        model_kwargs['cemb'] = torch.zeros(cemb_shape, device=self.device)
-        pred_eps_uncond = self.model(x_t, t, **model_kwargs)
+
+        # If a mask is provided, concatenate it to x_t as extra channels before passing to the model.
+        if 'mask' in model_kwargs:
+            mask = model_kwargs.get('mask')
+            # build kwargs without mask to forward to the model
+            kwargs_cond = {k: v for k, v in model_kwargs.items() if k != 'mask'}
+            x_cond = torch.cat([x_t, mask], dim=1)
+            pred_eps_cond = self.model(x_cond, t, **kwargs_cond)
+
+            # unconditional version: zero mask and zero cemb
+            zero_mask = torch.zeros_like(mask)
+            x_uncond = torch.cat([x_t, zero_mask], dim=1)
+            kwargs_uncond = kwargs_cond.copy()
+            cemb_shape = kwargs_cond['cemb'].shape
+            kwargs_uncond['cemb'] = torch.zeros(cemb_shape, device=self.device)
+            pred_eps_uncond = self.model(x_uncond, t, **kwargs_uncond)
+        else:
+            cemb_shape = model_kwargs['cemb'].shape
+            kwargs_cond = model_kwargs.copy()
+            pred_eps_cond = self.model(x_t, t, **kwargs_cond)
+            kwargs_uncond = kwargs_cond.copy()
+            kwargs_uncond['cemb'] = torch.zeros(cemb_shape, device=self.device)
+            pred_eps_uncond = self.model(x_t, t, **kwargs_uncond)
+
         pred_eps = (1 + self.w) * pred_eps_cond - self.w * pred_eps_uncond
 
         assert torch.isnan(x_t).int().sum(
@@ -201,10 +221,28 @@ class GaussianDiffusion(nn.Module):
             model_kwargs = {}
         B, C = x_t.shape[:2]
         assert t.shape == (B,)
-        cemb_shape = model_kwargs['cemb'].shape
-        pred_eps_cond = self.model(x_t, t, **model_kwargs)
-        model_kwargs['cemb'] = torch.zeros(cemb_shape, device=self.device)
-        pred_eps_uncond = self.model(x_t, t, **model_kwargs)
+
+        # handle mask concatenation similar to p_mean_variance
+        if 'mask' in model_kwargs:
+            mask = model_kwargs.get('mask')
+            kwargs_cond = {k: v for k, v in model_kwargs.items() if k != 'mask'}
+            x_cond = torch.cat([x_t, mask], dim=1)
+            pred_eps_cond = self.model(x_cond, t, **kwargs_cond)
+
+            zero_mask = torch.zeros_like(mask)
+            x_uncond = torch.cat([x_t, zero_mask], dim=1)
+            kwargs_uncond = kwargs_cond.copy()
+            cemb_shape = kwargs_cond['cemb'].shape
+            kwargs_uncond['cemb'] = torch.zeros(cemb_shape, device=self.device)
+            pred_eps_uncond = self.model(x_uncond, t, **kwargs_uncond)
+        else:
+            cemb_shape = model_kwargs['cemb'].shape
+            kwargs_cond = model_kwargs.copy()
+            pred_eps_cond = self.model(x_t, t, **kwargs_cond)
+            kwargs_uncond = kwargs_cond.copy()
+            kwargs_uncond['cemb'] = torch.zeros(cemb_shape, device=self.device)
+            pred_eps_uncond = self.model(x_t, t, **kwargs_uncond)
+
         pred_eps = (1 + self.w) * pred_eps_cond - self.w * pred_eps_uncond
 
         assert torch.isnan(x_t).int().sum(
@@ -287,7 +325,15 @@ class GaussianDiffusion(nn.Module):
             model_kwargs = {}
         t = torch.randint(self.T, size=(x_0.shape[0],), device=self.device)
         x_t, eps = self.q_sample(x_0, t)
-        pred_eps = self.model(x_t, t, **model_kwargs)
+        # if mask is provided, concatenate to x_t
+        if 'mask' in model_kwargs:
+            mask = model_kwargs.get('mask')
+            kwargs = {k: v for k, v in model_kwargs.items() if k != 'mask'}
+            x_input = torch.cat([x_t, mask], dim=1)
+        else:
+            kwargs = model_kwargs
+            x_input = x_t
+        pred_eps = self.model(x_input, t, **kwargs)
         loss = F.mse_loss(pred_eps, eps, reduction='mean')
         return loss
 
@@ -299,6 +345,13 @@ class GaussianDiffusion(nn.Module):
             model_kwargs = {}
         t = torch.randint(self.T, size=(x_0.shape[0],), device=self.device)
         x_t, eps = self.q_sample(x_0, t)
-        pred_eps = self.model(x_t, t, **model_kwargs)
+        if 'mask' in model_kwargs:
+            mask = model_kwargs.get('mask')
+            kwargs = {k: v for k, v in model_kwargs.items() if k != 'mask'}
+            x_input = torch.cat([x_t, mask], dim=1)
+        else:
+            kwargs = model_kwargs
+            x_input = x_t
+        pred_eps = self.model(x_input, t, **kwargs)
         loss = F.mse_loss(pred_eps, eps, reduction='mean')
         return loss
