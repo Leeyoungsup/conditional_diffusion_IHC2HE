@@ -23,6 +23,18 @@ def get_named_beta_schedule(schedule_name='linear', num_diffusion_timesteps=1000
             num_diffusion_timesteps,
             lambda t: math.cos((t + 0.008) / 1.008 * math.pi / 2) ** 2,
         )
+    elif schedule_name == "sigmoid":
+        # Sigmoid schedule for conditional image-to-image diffusion.
+        return betas_for_alpha_bar(
+            num_diffusion_timesteps,
+            lambda t: 1 / (1 + math.exp(-10 * (t - 0.5))),
+        )
+    elif schedule_name == "inverse_sigmoid":
+        # Inverse sigmoid schedule for conditional image-to-image diffusion.
+        return betas_for_alpha_bar(
+            num_diffusion_timesteps,
+            lambda t: math.exp(10 * (t - 1)) / (1 + math.exp(10 * (t - 1))),
+        )
     else:
         raise NotImplementedError(f"unknown beta schedule: {schedule_name}")
         

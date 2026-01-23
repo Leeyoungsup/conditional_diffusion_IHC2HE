@@ -140,19 +140,15 @@ class GaussianDiffusion(nn.Module):
             x_cond = torch.cat([x_t, mask], dim=1)
             pred_eps_cond = self.model(x_cond, t, **kwargs_cond)
 
-            # unconditional version: zero mask and zero cemb
+            # unconditional version: zero mask
             zero_mask = torch.zeros_like(mask)
             x_uncond = torch.cat([x_t, zero_mask], dim=1)
             kwargs_uncond = kwargs_cond.copy()
-            cemb_shape = kwargs_cond['cemb'].shape
-            kwargs_uncond['cemb'] = torch.zeros(cemb_shape, device=self.device)
             pred_eps_uncond = self.model(x_uncond, t, **kwargs_uncond)
         else:
-            cemb_shape = model_kwargs['cemb'].shape
             kwargs_cond = model_kwargs.copy()
             pred_eps_cond = self.model(x_t, t, **kwargs_cond)
             kwargs_uncond = kwargs_cond.copy()
-            kwargs_uncond['cemb'] = torch.zeros(cemb_shape, device=self.device)
             pred_eps_uncond = self.model(x_t, t, **kwargs_uncond)
 
         pred_eps = (1 + self.w) * pred_eps_cond - self.w * pred_eps_uncond
@@ -232,15 +228,11 @@ class GaussianDiffusion(nn.Module):
             zero_mask = torch.zeros_like(mask)
             x_uncond = torch.cat([x_t, zero_mask], dim=1)
             kwargs_uncond = kwargs_cond.copy()
-            cemb_shape = kwargs_cond['cemb'].shape
-            kwargs_uncond['cemb'] = torch.zeros(cemb_shape, device=self.device)
             pred_eps_uncond = self.model(x_uncond, t, **kwargs_uncond)
         else:
-            cemb_shape = model_kwargs['cemb'].shape
             kwargs_cond = model_kwargs.copy()
             pred_eps_cond = self.model(x_t, t, **kwargs_cond)
             kwargs_uncond = kwargs_cond.copy()
-            kwargs_uncond['cemb'] = torch.zeros(cemb_shape, device=self.device)
             pred_eps_uncond = self.model(x_t, t, **kwargs_uncond)
 
         pred_eps = (1 + self.w) * pred_eps_cond - self.w * pred_eps_uncond
